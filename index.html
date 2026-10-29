@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OAuth Path — know the road before you build the integration</title>
+<style>
+:root{--bg:#fbfaf8;--fg:#1c1b19;--mut:#6b675f;--card:#fff;--bd:#e4e0d8;--ac:#2b59ff;--ok:#1a7f4b;--wn:#b36b00;--bad:#c0392b;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#131211;--fg:#efece6;--mut:#a09b91;--card:#1c1a18;--bd:#312e2a;--ac:#7c9bff;--ok:#4cc38a;--wn:#e6a23c;--bad:#ff7b6b;color-scheme:dark}}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:860px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:26px;margin:0 0 4px}h2{font-size:18px;margin:26px 0 8px}p{margin:6px 0}.mut{color:var(--mut)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+input{flex:1;min-width:200px;padding:10px 12px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:var(--fg);font:inherit}
+button{padding:10px 14px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:var(--fg);font:inherit;cursor:pointer}
+button.p{background:var(--ac);color:#fff;border-color:var(--ac)}button:disabled{opacity:.5}
+.chip{border-radius:99px;padding:6px 12px}.chip.on{border-color:var(--ac);color:var(--ac)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-top:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stat{border:1px solid var(--bd);border-radius:10px;padding:10px}.stat b{display:block;font-size:12px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.tag{display:inline-block;font-size:12px;border-radius:6px;padding:1px 7px;border:1px solid currentColor;margin-right:6px;white-space:nowrap}
+.agent{color:var(--ac)}.you{color:var(--wn)}.Easy{color:var(--ok)}.Moderate{color:var(--wn)}.Hard{color:var(--bad)}
+ol,ul{padding-left:20px;margin:6px 0}li{margin:5px 0}
+.banner{border-left:3px solid var(--wn);padding:8px 12px;background:var(--card);border-radius:6px;margin-top:12px;font-size:14px}
+a{color:var(--ac)}.scroll{overflow-x:auto}
+</style></head><body><main>
+<h1>OAuth Path</h1>
+<p class="mut">Look up an app. See how hard its OAuth setup really is, how long approval takes, what blocks people, and what an agent can do versus what you must do yourself.</p>
+<div class="row" id="chips" style="margin-top:14px"></div>
+<div class="row" style="margin-top:10px"><input id="q" placeholder="App name or website, e.g. Notion or notion.so" aria-label="App name or website"><button class="p" id="gen">Generate guide</button></div>
+<p class="mut" style="font-size:13px">Not in the library? Generate a draft live. It is labelled by how well each claim is evidenced.</p>
+<div id="out"></div>
+<h2>How to read this</h2>
+<div class="card" style="font-size:14px">
+<p><b>Why this exists.</b> With Composio, some toolkits already have a managed OAuth app, so users connect via a Connect Link and you register nothing. For the rest, or when you want your own branding, custom scopes or your own rate-limit quota, you register an OAuth app with the provider and give Composio its client ID and secret. That is where weeks can disappear. Check which case you are in first: <code>composio.toolkits.get("slug").composio_managed_auth_schemes</code>, or the <a href="https://docs.composio.dev/toolkits/managed-auth">managed OAuth directory</a>.</p>
+<p><b>Evidence labels.</b> <span class="tag" style="color:var(--ok)">Primary</span> read in provider or vendor docs. <span class="tag" style="color:var(--wn)">Secondary</span> only seen in third-party write-ups. <span class="tag" style="color:var(--bad)">Unverified</span> not checked or likely to change.</p>
+<p><b>What was and was not tested.</b> The four library guides were built from web research on 29 Oct 2026. No provider accounts were created and no approvals were attempted, so every "time" is an estimate from documentation and reports, not a measurement. The live generator below runs from model knowledge only: this page cannot browse. The repo agent (README) adds web search and source-checking.</p></div>
+</main>
+<script>
+const G={
+github:{name:"GitHub",verdict:"Easy",time:"30–60 min to build; no provider review",effort:"Low",
+summary:"No approval gate to launch. The real decision is OAuth App vs GitHub App, and whether customer orgs will approve you.",
+facts:[["Review","None for creation"],["Wait","Org owner approval, if the customer org restricts third-party apps"],["Gotcha","Org policy can block your app"]],
+steps:[["you","Sign in to GitHub and open Settings → Developer settings. Choose GitHub App (recommended) or OAuth App."],["you","Set the callback URL to the redirect URI shown in your Composio custom auth config."],["agent","Agent maps the minimum scopes or permissions your toolkit actions need (e.g. issues only, not full repo)."],["you","Copy client ID and generate a client secret. Never commit them."],["agent","Agent creates the custom auth config, runs a Connect Link test and a read call."],["you","If a customer org blocks you, send its owner the approval request and a short justification."]],
+blockers:[["Org says access denied","An org application policy is active: only an owner can authorize an OAuth app. Ask the owner to approve it under Third-party access."],["repo scope feels too broad","OAuth apps cannot use granular permissions. A GitHub App can, and gets per-repo installs."],["Needs enterprise-level resources","A GitHub App cannot yet get enterprise permissions; use an OAuth App."]],
+ev:[["Primary","OAuth apps lack granular permissions and need the repo scope for issues and PRs; GitHub Apps do not"],["Primary","With an org application policy, only an owner can authorize an OAuth app; GitHub Apps are not subject to those policies"],["Primary","OAuth tokens use the user’s 5,000 requests/hour limit; GitHub App limits scale with installs"],["Unverified","Whether a GitHub App’s user-to-server credentials work with Composio’s custom auth config. Test before committing"],["Unverified","The 30–60 min estimate is judgement, not a timed run"]],
+src:[["GitHub: GitHub Apps vs OAuth apps","https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/differences-between-github-apps-and-oauth-apps"],["Composio managed OAuth","https://docs.composio.dev/toolkits/managed-auth"]]},
+slack:{name:"Slack",verdict:"Moderate",time:"1–2 hours to build; Marketplace review adds weeks (unmeasured)",effort:"Medium",
+summary:"Creating the app is quick. The trap is rate limits: unlisted, commercially distributed apps are throttled hard on message-history reads until approved for the Marketplace.",
+facts:[["Review","Marketplace review, for commercial distribution"],["Wait","Unmeasured; plan weeks"],["Gotcha","conversations.history: 1 req/min if unlisted"]],
+steps:[["you","Create an app at the Slack API site, from a manifest if you can."],["agent","Agent drafts the manifest: redirect URL, minimum bot and user scopes for your actions."],["you","Add the redirect URL from your Composio auth config, then enable distribution."],["agent","Agent connects a test workspace and calls auth.test and chat.postMessage."],["agent","Agent measures whether your agent’s flows call conversations.history or conversations.replies; if so, flag the limit now."],["you","If you will serve other companies, plan the Marketplace submission and its prerequisites."]],
+blockers:[["Agent reads of channel history time out or return 429","Non-Marketplace apps created after 29 May 2025 get 1 request/min and 15 messages per call. Cache, use events instead of polling, or pursue Marketplace approval."],["Marketplace submission blocked","An install-count prerequisite (10 active workspaces) was documented at one point and was under revision. Check the current requirement before planning."],["Customer’s workspace restricts app installs","An admin must approve the app. Send them the scopes list and your privacy policy."]],
+ev:[["Primary","1 req/min and 15 objects on conversations.history/replies for unlisted, commercially distributed apps; new apps from 29 May 2025"],["Primary","Existing unlisted distributed installs were scheduled to be limited from 3 Mar 2026"],["Primary","Updated terms say the Marketplace is the proper channel for commercial distribution"],["Primary","Internal customer-built apps keep existing limits"],["Unverified","Whether Composio’s managed Slack app is Marketplace-approved, which would avoid this for you. Check the directory"],["Unverified","Marketplace review duration; no figure found"]],
+src:[["Slack: rate limit changes for non-Marketplace apps","https://docs.slack.dev/changelog/2025/05/29/rate-limit-changes-for-non-marketplace-apps"],["Slack developer changelog","https://api.slack.com/changelog/deprecations"]]},
+google:{name:"Google (Gmail)",verdict:"Hard",time:"Build: 1–2 hours. Verification: weeks, sometimes months",effort:"High",
+summary:"The difficulty is set by your scopes. Gmail read and modify scopes are restricted: verification plus an annual third-party security assessment (CASA). Fewer scopes means a faster launch.",
+facts:[["Review","Verification; CASA if restricted scopes"],["Wait","Several weeks; Google gives no fixed number"],["Cost","Assessment fees, vendor-quoted"]],
+steps:[["you","Create a Google Cloud project and configure the OAuth consent screen."],["agent","Agent lists the minimum scopes per action and classifies each as non-sensitive, sensitive or restricted."],["you","Decide whether dropping restricted scopes is acceptable (e.g. gmail.send is sensitive; gmail.readonly is restricted)."],["you","Create OAuth client credentials with your Composio redirect URI. Add test users while in Testing."],["agent","Agent drafts the scope justification text and a demo-video script for the verification form."],["you","Submit verification. For restricted scopes, engage an approved CASA assessor, then resubmit the letter of validation."]],
+blockers:[["access_denied for non-test accounts","App is in Testing, or scopes are not yet verified. Unverified apps with sensitive or restricted scopes are capped at 100 users."],["Surprise assessment","Adding one unused restricted scope pulls you into CASA. Remove scopes you do not call."],["Assessment expires","Restricted-scope apps are reassessed every 12 months."]],
+ev:[["Primary","Restricted-scope apps need an assessment every 12 months, counted from the previous letter of validation (assessor page)"],["Primary","Gmail API is a restricted-scope family (assessor page)"],["Secondary","Gmail compose and insert are restricted; gmail.send is sensitive (Nylas)"],["Secondary","Google references $15,000–$75,000 for assessment; one assessor lists entry pricing from $3,000. Ranges differ widely: get quotes"],["Secondary","Review “can take several weeks” and sometimes months; 100-user cap until verified"],["Unverified","Current Google wording and tier names; confirm in Google’s own docs before committing"]],
+src:[["Nylas: Google OAuth verification costs and timelines","https://www.nylas.com/?p=1231"],["Nylas: Gmail scope reference","https://developer.nylas.com/docs/cookbook/use-cases/build/google-oauth-scopes/"],["Leviathan Security: CASA programme","https://www.leviathansecurity.com/programs/google-casa-cloud-application-security-assessment"]]},
+linkedin:{name:"LinkedIn",verdict:"Hard",time:"Sign-in: ~1 hour. Posting to Pages: days to weeks, with rejection risk",effort:"High",
+summary:"Two very different products. Sign-in and personal posting are self-serve. Company Page posting, ads and analytics need manual review, and a rejected app cannot reapply.",
+facts:[["Review","Manual, per product"],["Wait","“Several days” reported; unmeasured"],["Gotcha","Rejected app cannot re-apply; create a new one"]],
+steps:[["you","Create an app at LinkedIn Developers and link it to a real, verified Company Page."],["agent","Agent decides which products you need: Sign In with OIDC and Share on LinkedIn (self-serve) or Community Management API (reviewed)."],["you","Add the Composio redirect URI under Auth."],["agent","Agent drafts the access request: use case, data handling, and a screencast script of the flow."],["you","Submit the form from your organisation’s verified domain; record the screencast."],["agent","After approval, agent tests posting as a Page admin, then you request the Standard tier if limits bite."]],
+blockers:[["Product missing under Added products","Review-gated products are not granted until approved. Until then, only admins of the linked Page can test."],["Rejected request","Per LinkedIn, you cannot re-apply with the same app. Fix the issues and create a new app."],["Need refresh tokens","Access tokens last 60 days; programmatic refresh is reported as limited to approved MDP partners. Plan re-auth flows."]],
+ev:[["Primary","Community Management API needs a manual access request; rejected apps cannot reapply (LinkedIn docs)"],["Primary","Requires verified organisation website/domain and Page association for Development tier (LinkedIn docs)"],["Secondary","Sign In with OIDC and Share on LinkedIn are self-serve; Community and Advertising APIs reviewed in “several days” (Serval)"],["Secondary","Dev tier ~500 requests/app/day, 100/member/day; 60-day tokens; refresh for MDP partners only"],["Unverified","Real approval time and acceptance rate; no measured data found"]],
+src:[["LinkedIn: Community Management app review","https://learn.microsoft.com/en-us/linkedin/marketing/community-management-app-review"],["Serval: LinkedIn setup notes","https://docs.serval.com/sections/integrations/linkedin"]]}};
+const $=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const col={Primary:"var(--ok)",Secondary:"var(--wn)",Unverified:"var(--bad)"};
+function render(g,live){
+const v=["Easy","Moderate","Hard"].includes(g.verdict)?g.verdict:"Moderate";
+return `<div class="card"><h2 style="margin-top:0">${esc(g.name)} <span class="tag ${v}">${v}</span></h2><p>${esc(g.summary)}</p>
+${live?'<div class="banner"><b>Live draft from model knowledge.</b> No browsing or setup attempt was made. Treat every claim as unverified until you open the sources. The repo agent runs the same schema with web search.</div>':''}
+<div class="grid" style="margin-top:12px"><div class="stat"><b>Time</b>${esc(g.time)}</div><div class="stat"><b>Effort</b>${esc(g.effort)}</div>${(g.facts||[]).map(f=>`<div class="stat"><b>${esc(f[0])}</b>${esc(f[1])}</div>`).join("")}</div>
+<h2>Your path</h2><ol>${(g.steps||[]).map(s=>`<li><span class="tag ${s[0]=="agent"?"agent":"you"}">${s[0]=="agent"?"Agent can do":"You do"}</span>${esc(s[1])}</li>`).join("")}</ol>
+<h2>If you get stuck</h2><ul>${(g.blockers||[]).map(b=>`<li><b>${esc(b[0])}.</b> ${esc(b[1])}</li>`).join("")}</ul>
+<h2>What is verified</h2><ul>${(g.ev||[]).map(e=>`<li><span class="tag" style="color:${col[e[0]]||"var(--mut)"}">${esc(e[0])}</span>${esc(e[1])}</li>`).join("")}</ul>
+<h2>Sources</h2><ul>${(g.src||[]).filter(s=>/^https:\/\//.test(s[1])).map(s=>`<li><a href="${esc(s[1])}" target="_blank" rel="noopener">${esc(s[0])}</a></li>`).join("")||"<li class='mut'>None cited.</li>"}</ul>
+<div class="row" style="margin-top:12px"><button id="cp">Copy guide as Markdown</button><button id="ln">Copy share link</button></div></div>`}
+function md(g){return `# ${g.name} OAuth path (${g.verdict})\n${g.summary}\n\nTime: ${g.time}\nEffort: ${g.effort}\n\n## Path\n${(g.steps||[]).map((s,i)=>`${i+1}. [${s[0]=="agent"?"Agent":"You"}] ${s[1]}`).join("\n")}\n\n## Blockers\n${(g.blockers||[]).map(b=>`- ${b[0]}: ${b[1]}`).join("\n")}\n\n## Evidence\n${(g.ev||[]).map(e=>`- [${e[0]}] ${e[1]}`).join("\n")}\n\n## Sources\n${(g.src||[]).map(s=>`- ${s[0]}: ${s[1]}`).join("\n")}`}
+let cur=null;
+function show(g,live,key){cur=g;$("#out").innerHTML=render(g,live);
+$("#cp").onclick=async e=>{try{await navigator.clipboard.writeText(md(g));e.target.textContent="Copied"}catch(x){e.target.textContent="Copy blocked: select text manually"}};
+$("#ln").onclick=async e=>{try{await navigator.clipboard.writeText(location.href.split("#")[0]+(key?"#"+key:""));e.target.textContent=key?"Link copied":"Live drafts have no link; use Markdown"}catch(x){e.target.textContent="Copy blocked"}};
+document.querySelectorAll(".chip").forEach(c=>c.classList.toggle("on",c.dataset.k===key))}
+$("#chips").innerHTML=Object.keys(G).map(k=>`<button class="chip" data-k="${k}">${G[k].name}</button>`).join("");
+$("#chips").onclick=e=>{const k=e.target.dataset.k;if(k){show(G[k],false,k);try{history.replaceState(null,"","#"+k)}catch(x){}}};
+$("#gen").onclick=async()=>{
+const t=$("#q").value.trim();if(!t)return;
+const hit=Object.keys(G).find(k=>t.toLowerCase().includes(k)||G[k].name.toLowerCase().includes(t.toLowerCase()));
+if(hit){show(G[hit],false,hit);return}
+const b=$("#gen");b.disabled=true;b.textContent="Investigating…";
+try{const sample=await claude.use("sample");if(!sample)throw new Error("Live generation needs Claude access on this page.");
+const prompt=`You are an integrations analyst. App or website: "${t}". Produce an OAuth app setup and approval guide for a developer building an AI agent whose users connect this app. Return ONLY JSON: {"name":str,"verdict":"Easy|Moderate|Hard","summary":str,"time":str,"effort":str,"facts":[[label,value]x3],"steps":[["agent"|"you",str]x5-7],"blockers":[[symptom,fix]x3],"ev":[["Primary|Secondary|Unverified",str]x4-6],"src":[[label,url]]}. Rules: you have no browsing, so mark nearly every claim "Unverified" unless it is stable well-known documentation; never invent URLs, give only official developer-docs domain roots you are certain exist or leave src empty; if the app does not support OAuth say so in the summary; state review gates, wait times, and cost as ranges with uncertainty; say which steps an agent can automate and which need a human (account creation, legal forms, screencasts, identity checks).`;
+const g=await sample.json(prompt);show(g,true,null)}
+catch(e){$("#out").innerHTML=`<div class="banner">Could not generate: ${esc(e.message||e.code||"unknown error")}</div>`}
+b.disabled=false;b.textContent="Generate guide"};
+$("#q").addEventListener("keydown",e=>{if(e.key==="Enter")$("#gen").click()});
+const h=location.hash.slice(1);if(G[h])show(G[h],false,h);
+</script></body></html>
