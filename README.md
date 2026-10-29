@@ -3,7 +3,7 @@
 Look up an app, get a shareable guide to its OAuth setup and approval, and know what an
 agent can do versus what you must do yourself.
 
-**Live demo:** https://claude.ai/artifact/AuefkVsnP8H35zBUVduVhg
+**Live demo:** https://roy-sayan.github.io/OAuth-Path/
 
 ## The problem
 
